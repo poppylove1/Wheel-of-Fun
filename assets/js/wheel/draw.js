@@ -27,13 +27,15 @@ function slices(r, seg) {
     ctx.lineWidth = 3;
     ctx.strokeStyle = '#1a1a1a';
     ctx.stroke();
+    const size = Math.max(10, Math.min(19, r * seg * .32));
+    const start = Math.max(34, size / seg);
     ctx.save();
     ctx.rotate(s + seg / 2);
-    ctx.textAlign = 'right';
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#1a1a1a';
-    ctx.font = `600 ${Math.max(10, Math.min(19, r * seg * .32))}px Mitr, sans-serif`;
-    ctx.fillText(`${a} → ${b}`, r - 12, 0);
+    ctx.font = `600 ${size}px Mitr, sans-serif`;
+    ctx.fillText(`${a} → ${b}`, start, 0, Math.max(24, r - 12 - start));
     ctx.restore();
   });
 }
