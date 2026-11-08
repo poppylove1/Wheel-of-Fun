@@ -1,91 +1,169 @@
-import { $, pick } from '../common.js';
+import { $, int } from '../common.js';
+import { COOLDOWN } from './config.js';
+import { state } from './state.js';
+import { draw, fit, idxAt } from './draw.js';
+import { plan } from './plan.js';
+import { buzz, cue, fanfare, tick, unlock } from './audio.js';
+import { boom, shake } from './fx.js';
 
-const FRAMES = 12;
-const FRAME_MS = 70;
+const canvas = $('c');
+let wake = null, frame = 0, cooldown = 0;
 
-let cats = [], active = new Set(), seen = new Set(), busy = false;
-
-const pool = () =>
-  cats
-    .filter(c => active.has(c.id))
-    .flatMap(c => c.questions.map(q => ({ tag: c.name, q, key: `${c.id}|${q}` })));
-
-const fresh = () => {
-  const all = pool();
-  return $('norep').checked ? all.filter(x => !seen.has(x.key)) : all;
-};
-
-const renderChips = () => {
-  const chips = [
-    { id: '*', name: 'ทั้งหมด', on: active.size === cats.length },
-    ...cats.map(c => ({ ...c, on: active.has(c.id) }))
-  ];
-  $('chips').innerHTML = chips
-    .map(c => `<button class="chip" data-id="${c.id}" aria-pressed="${c.on}">${c.name}</button>`)
-    .join('');
-};
-
-const refresh = () => {
-  renderChips();
-  const total = pool().length;
-  $('info').textContent = total ? `${total} คำถาม · เหลือ ${fresh().length}` : 'เลือกหมวดอย่างน้อย 1 หมวด';
-  $('go').disabled = busy || !total;
-};
-
-const show = ({ tag, q }) => {
-  $('tag').textContent = tag;
-  $('q').textContent = q;
-};
-
-const roll = () => {
-  if (busy) return;
-  let left = fresh();
-  if (!left.length) {
-    seen.clear();
-    left = fresh();
+const build = () => {
+  const { names, used } = state;
+  const all = names.flatMap(a => names.filter(b => b !== a).map(b => [a, b]));
+  const norep = $('norep').checked;
+  state.pairs = norep ? all.filter(p => !used.has(p.join('>'))) : all;
+  if (!state.pairs.length) {
+    used.clear();
+    state.pairs = all;
   }
-  if (!left.length) return;
-
-  const final = pick(left), all = pool();
-  let n = 0;
-  busy = true;
-  $('card').classList.add('roll');
-  $('go').disabled = true;
-
-  const timer = setInterval(() => {
-    if (++n < FRAMES) return show(pick(all));
-    clearInterval(timer);
-    busy = false;
-    seen.add(final.key);
-    show(final);
-    $('card').classList.remove('roll');
-    refresh();
-  }, FRAME_MS);
+  $('info').textContent =
+    names.length < 2
+      ? 'ต้องมีอย่างน้อย 2 คน'
+      : `${names.length} คน · ${state.pairs.length} ช่อง${norep ? ` · ออกไปแล้ว ${used.size}` : ''}`;
+  $('go').disabled = names.length < 2 || state.spinning;
+  draw();
 };
 
-$('chips').onclick = e => {
-  const id = e.target.dataset?.id;
-  if (!id) return;
-  if (id === '*') active = new Set(cats.map(c => c.id));
-  else if (!active.delete(id)) active.add(id);
-  refresh();
+const readNames = () => {
+  state.names = [...new Set($('names').value.split(/[\s,，]+/).filter(Boolean))].slice(0, 8);
+  state.used.clear();
+  build();
 };
-$('norep').onchange = refresh;
-$('go').onclick = roll;
+
+const setBusy = busy => {
+  state.spinning = busy;
+  $('norep').disabled = $('reset').disabled = busy;
+  $('go').disabled = busy || state.names.length < 2;
+};
+
+const releaseWake = () => {
+  wake?.release().catch(() => { });
+  wake = null;
+};
+
+const release = () => {
+  cooldown = 0;
+  setBusy(false);
+  if (!state.pending) return;
+  state.pending = false;
+  readNames();
+};
+
+const abort = () => {
+  cancelAnimationFrame(frame);
+  clearTimeout(cooldown);
+  state.flick = 0;
+  releaseWake();
+  release();
+};
+
+const finish = () => {
+  const pair = state.pairs[idxAt(state.theta)];
+  state.flick = 0;
+  state.lastKey = pair.join('>');
+  state.hist.unshift(pair);
+  draw();
+  $('say').textContent = '';
+  $('res').innerHTML = `<b>${pair[0]}</b> ถาม <b>${pair[1]}</b>`;
+  $('hist').innerHTML = state.hist.map(([a, b]) => `<li>${a} → ${b}</li>`).join('');
+  releaseWake();
+  boom();
+  fanfare();
+  buzz([80, 40, 80, 40, 160]);
+  cooldown = setTimeout(release, COOLDOWN);
+};
+
+const spin = () => {
+  if (state.spinning || state.names.length < 2) return;
+  setBusy(true);
+  if (state.lastKey && $('norep').checked) state.used.add(state.lastKey);
+  state.lastKey = null;
+  build();
+
+  const phases = plan(int(0, state.pairs.length), state.pairs.length, state.theta);
+  $('res').innerHTML = '&nbsp;';
+  unlock();
+  navigator.wakeLock?.request('screen').then(l => (wake = l)).catch(() => { });
+
+  let i = 0, start = performance.now(), last = idxAt(state.theta), lastTick = 0;
+
+  const enter = () => {
+    const say = phases[i].say || '';
+    $('say').textContent = say;
+    if (say) cue();
+  };
+
+  const step = now => {
+    let el = (now - start) / 1000;
+    while (i < phases.length && el >= phases[i].d) {
+      el -= phases[i].d;
+      state.theta = phases[i].a1;
+      if (phases[i].shake) shake();
+      start = now - el * 1000;
+      if (++i < phases.length) enter();
+    }
+    if (i >= phases.length) return finish();
+
+    const { a0, a1, d, e } = phases[i];
+    state.theta = a0 + (a1 - a0) * e(el / d);
+    const cur = idxAt(state.theta);
+    if (cur !== last) {
+      last = cur;
+      state.flick = .55;
+      if (now - lastTick > 35) {
+        lastTick = now;
+        tick();
+        buzz(6);
+      }
+    }
+    state.flick *= .86;
+    draw();
+    frame = requestAnimationFrame(step);
+  };
+
+  enter();
+  frame = requestAnimationFrame(step);
+};
+
+const onNames = () => {
+  if (!state.spinning) return readNames();
+  state.pending = true;
+  $('info').textContent = 'แก้ชื่อได้ จะมีผลรอบหน้า';
+};
+
+const resetUsed = () => {
+  state.used.clear();
+  state.lastKey = null;
+  build();
+};
+
+$('names').oninput = onNames;
+$('names').onkeydown = e => {
+  if (e.key !== 'Enter' || e.repeat) return;
+  e.target.blur();
+  spin();
+};
+$('norep').onchange = resetUsed;
+$('go').onclick = canvas.onclick = spin;
+$('clr').onclick = () => {
+  $('names').value = '';
+  $('names').focus();
+  onNames();
+};
+$('reset').onclick = () => {
+  state.hist = [];
+  $('hist').innerHTML = '';
+  resetUsed();
+};
 
 addEventListener('keydown', e => {
-  if (e.code !== 'Space' || e.target.tagName === 'INPUT') return;
+  if (e.code !== 'Space' || e.repeat || e.target.tagName === 'INPUT') return;
   e.preventDefault();
-  roll();
+  spin();
 });
+addEventListener('error', () => state.spinning && abort());
 
-fetch('../data/questions.json')
-  .then(r => r.json())
-  .then(({ categories }) => {
-    cats = categories;
-    active = new Set(cats.map(c => c.id));
-    refresh();
-  })
-  .catch(() => {
-    $('q').textContent = 'โหลด questions.json ไม่ได้ ลองเปิดผ่านเว็บ (เช่น GitHub Pages) แทนการเปิดไฟล์ตรงๆ';
-  });
+new ResizeObserver(fit).observe(canvas);
+readNames();
