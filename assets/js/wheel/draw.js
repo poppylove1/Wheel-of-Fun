@@ -14,6 +14,25 @@ export function fit() {
   draw();
 }
 
+let rightAlign;
+
+const canAlignRight = () => {
+  if (rightAlign !== undefined) return rightAlign;
+  try {
+    const probe = document.createElement('canvas'), g = probe.getContext('2d');
+    probe.width = 140;
+    probe.height = 40;
+    g.font = '20px sans-serif';
+    g.textAlign = 'right';
+    g.textBaseline = 'middle';
+    g.fillText('ไอซ์เจม', 80, 20);
+    rightAlign = !g.getImageData(90, 0, 50, 40).data.some((v, i) => i % 4 === 3 && v);
+  } catch {
+    rightAlign = true;
+  }
+  return rightAlign;
+};
+
 function slices(r, seg) {
   const n = state.pairs.length;
   state.pairs.forEach(([a, b], i) => {
@@ -28,14 +47,20 @@ function slices(r, seg) {
     ctx.strokeStyle = '#1a1a1a';
     ctx.stroke();
     const size = Math.max(10, Math.min(19, r * seg * .32));
-    const start = Math.max(34, size / seg);
+    const text = `${a} → ${b}`;
     ctx.save();
     ctx.rotate(s + seg / 2);
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
     ctx.fillStyle = '#1a1a1a';
+    ctx.textBaseline = 'middle';
     ctx.font = `600 ${size}px Mitr, sans-serif`;
-    ctx.fillText(`${a} → ${b}`, start, 0, Math.max(24, r - 12 - start));
+    if (canAlignRight()) {
+      ctx.textAlign = 'right';
+      ctx.fillText(text, r - 12, 0);
+    } else {
+      const start = Math.max(34, size / seg, r * .3);
+      ctx.textAlign = 'left';
+      ctx.fillText(text, start, 0, Math.max(24, r - 12 - start));
+    }
     ctx.restore();
   });
 }
