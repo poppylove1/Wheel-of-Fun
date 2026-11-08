@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f2ecdc">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>วงล้อกวนตีน</title>
+  <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/base.css?v=6">
+  <link rel="stylesheet" href="assets/css/wheel.css?v=6">
+</head>
+
+<body>
+  <canvas id="fx"></canvas>
+  <main>
+    <section id="box">
+      <canvas id="c"></canvas>
+    </section>
+    <aside>
+      <h1>วงล้อ<br>กวนตีน</h1>
+      <nav><a href="questions/">ไปหน้าสุ่มคำถาม →</a></nav>
+      <label for="names">ใครเล่นบ้าง (เว้นวรรคคั่น)</label>
+      <input id="names" value="เจม ไอซ์ คิม" enterkeyhint="go" autocomplete="off" autocapitalize="off"
+        spellcheck="false">
+      <button id="clr" type="button" class="small">ล้างชื่อ</button>
+      <p id="info"></p>
+      <label class="ck"><input type="checkbox" id="norep"> ออกแล้วตัดทิ้ง (ให้ครบทุกคู่)</label>
+      <label class="ck"><input type="checkbox" id="snd" checked> เสียง + สั่น</label>
+      <button id="go">หมุน!</button>
+      <div id="say"></div>
+      <div id="res">&nbsp;</div>
+      <ol id="hist"></ol>
+      <button id="reset" class="small">ล้างประวัติ</button>
+    </aside>
+  </main>
+  <script type="module" src="assets/js/wheel/main.js?v=5"></script>
+</body>
+
+</html>

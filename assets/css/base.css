@@ -1,0 +1,128 @@
+:root {
+  --ink: #1a1a1a;
+  --paper: #f2ecdc;
+  --yel: #ffd93b;
+  --red: #ff4b3e;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Mitr', system-ui, sans-serif;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+h1 {
+  font-size: clamp(2rem, 6vw, 3.4rem);
+  line-height: 1;
+  margin: 0 0 16px;
+  transform: rotate(-2deg);
+  color: var(--red);
+  -webkit-text-stroke: 2px var(--ink);
+  text-shadow: 4px 4px 0 var(--ink);
+}
+
+label {
+  display: block;
+  font-size: .9rem;
+  margin-bottom: 4px;
+}
+
+.ck {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 4px 0;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+.ck input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--ink);
+  flex: none;
+}
+
+#info {
+  font-size: .85rem;
+  margin: 6px 0 8px;
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  font-size: 1.4rem;
+  min-height: 56px;
+  background: var(--yel);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--ink);
+  padding: 10px 16px;
+  margin-top: 10px;
+  width: 100%;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+button:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+button:disabled {
+  background: #ccc;
+  cursor: default;
+}
+
+button.small {
+  font-size: .9rem;
+  min-height: 44px;
+  box-shadow: 3px 3px 0 var(--ink);
+  background: #fff;
+}
+
+nav {
+  margin-bottom: 10px;
+}
+
+nav a {
+  color: var(--ink);
+  font-size: .9rem;
+}
+
+@media (max-width: 760px) {
+  h1 {
+    margin-bottom: 10px;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  h1 {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+    text-shadow: 3px 3px 0 var(--ink);
+  }
+
+  button {
+    min-height: 46px;
+    font-size: 1.15rem;
+    margin-top: 6px;
+  }
+}
