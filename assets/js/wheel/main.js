@@ -1,4 +1,5 @@
 import { $, int } from '../common.js';
+import { COOLDOWN } from './config.js';
 import { state } from './state.js';
 import { draw, fit, idxAt } from './draw.js';
 import { plan } from './plan.js';
@@ -6,7 +7,7 @@ import { buzz, cue, fanfare, tick, unlock } from './audio.js';
 import { boom, shake } from './fx.js';
 
 const canvas = $('c');
-let lock = null;
+let wake = null, frame = 0, cooldown = 0;
 
 const build = () => {
   const { names, used } = state;
@@ -31,44 +32,60 @@ const readNames = () => {
   build();
 };
 
-const releaseLock = () => {
-  lock?.release().catch(() => { });
-  lock = null;
+const setBusy = busy => {
+  state.spinning = busy;
+  $('norep').disabled = $('reset').disabled = busy;
+  $('go').disabled = busy || state.names.length < 2;
+};
+
+const releaseWake = () => {
+  wake?.release().catch(() => { });
+  wake = null;
+};
+
+const release = () => {
+  cooldown = 0;
+  setBusy(false);
+  if (!state.pending) return;
+  state.pending = false;
+  readNames();
+};
+
+const abort = () => {
+  cancelAnimationFrame(frame);
+  clearTimeout(cooldown);
+  state.flick = 0;
+  releaseWake();
+  release();
 };
 
 const finish = () => {
   const pair = state.pairs[idxAt(state.theta)];
   state.flick = 0;
-  state.spinning = false;
   state.lastKey = pair.join('>');
   state.hist.unshift(pair);
   draw();
-  $('go').disabled = false;
   $('say').textContent = '';
   $('res').innerHTML = `<b>${pair[0]}</b> ถาม <b>${pair[1]}</b>`;
   $('hist').innerHTML = state.hist.map(([a, b]) => `<li>${a} → ${b}</li>`).join('');
-  releaseLock();
+  releaseWake();
   boom();
   fanfare();
   buzz([80, 40, 80, 40, 160]);
-  if (state.pending) {
-    state.pending = false;
-    readNames();
-  }
+  cooldown = setTimeout(release, COOLDOWN);
 };
 
 const spin = () => {
   if (state.spinning || state.names.length < 2) return;
+  setBusy(true);
   if (state.lastKey && $('norep').checked) state.used.add(state.lastKey);
   state.lastKey = null;
   build();
 
   const phases = plan(int(0, state.pairs.length), state.pairs.length, state.theta);
-  state.spinning = true;
-  $('go').disabled = true;
   $('res').innerHTML = '&nbsp;';
   unlock();
-  navigator.wakeLock?.request('screen').then(l => (lock = l)).catch(() => { });
+  navigator.wakeLock?.request('screen').then(l => (wake = l)).catch(() => { });
 
   let i = 0, start = performance.now(), last = idxAt(state.theta), lastTick = 0;
 
@@ -103,11 +120,11 @@ const spin = () => {
     }
     state.flick *= .86;
     draw();
-    requestAnimationFrame(step);
+    frame = requestAnimationFrame(step);
   };
 
   enter();
-  requestAnimationFrame(step);
+  frame = requestAnimationFrame(step);
 };
 
 const onNames = () => {
@@ -124,7 +141,7 @@ const resetUsed = () => {
 
 $('names').oninput = onNames;
 $('names').onkeydown = e => {
-  if (e.key !== 'Enter') return;
+  if (e.key !== 'Enter' || e.repeat) return;
   e.target.blur();
   spin();
 };
@@ -142,14 +159,11 @@ $('reset').onclick = () => {
 };
 
 addEventListener('keydown', e => {
-  if (e.code !== 'Space' || e.target.tagName === 'INPUT') return;
+  if (e.code !== 'Space' || e.repeat || e.target.tagName === 'INPUT') return;
   e.preventDefault();
   spin();
 });
-addEventListener('error', () => {
-  state.spinning = false;
-  $('go').disabled = state.names.length < 2;
-});
+addEventListener('error', () => state.spinning && abort());
 
 new ResizeObserver(fit).observe(canvas);
 readNames();
