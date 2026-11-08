@@ -1,4 +1,5 @@
 import { $, int } from '../common.js';
+import { store } from '../store.js';
 import { COOLDOWN } from './config.js';
 import { state } from './state.js';
 import { draw, fit, idxAt } from './draw.js';
@@ -8,6 +9,19 @@ import { boom, shake } from './fx.js';
 
 const canvas = $('c');
 let wake = null, frame = 0, cooldown = 0;
+
+const save = () =>
+  store.save('wheel', {
+    names: $('names').value,
+    norep: $('norep').checked,
+    used: [...state.used],
+    lastKey: state.lastKey,
+    hist: state.hist
+  });
+
+const renderHist = () => {
+  $('hist').innerHTML = state.hist.map(([a, b]) => `<li>${a} → ${b}</li>`).join('');
+};
 
 const build = () => {
   const { names, used } = state;
@@ -24,11 +38,12 @@ const build = () => {
       : `${names.length} คน · ${state.pairs.length} ช่อง${norep ? ` · ออกไปแล้ว ${used.size}` : ''}`;
   $('go').disabled = names.length < 2 || state.spinning;
   draw();
+  save();
 };
 
-const readNames = () => {
+const readNames = keep => {
   state.names = [...new Set($('names').value.split(/[\s,，]+/).filter(Boolean))].slice(0, 8);
-  state.used.clear();
+  if (!keep) state.used.clear();
   build();
 };
 
@@ -67,7 +82,8 @@ const finish = () => {
   draw();
   $('say').textContent = '';
   $('res').innerHTML = `<b>${pair[0]}</b> ถาม <b>${pair[1]}</b>`;
-  $('hist').innerHTML = state.hist.map(([a, b]) => `<li>${a} → ${b}</li>`).join('');
+  renderHist();
+  save();
   releaseWake();
   boom();
   fanfare();
@@ -154,7 +170,7 @@ $('clr').onclick = () => {
 };
 $('reset').onclick = () => {
   state.hist = [];
-  $('hist').innerHTML = '';
+  renderHist();
   resetUsed();
 };
 
@@ -165,5 +181,16 @@ addEventListener('keydown', e => {
 });
 addEventListener('error', () => state.spinning && abort());
 
+const saved = store.load('wheel');
+if (saved) {
+  const { names = '', norep = false, used = [], lastKey = null, hist = [] } = saved;
+  $('names').value = names;
+  $('norep').checked = norep;
+  state.used = new Set(used);
+  state.lastKey = lastKey;
+  state.hist = hist;
+  renderHist();
+}
+
 new ResizeObserver(fit).observe(canvas);
-readNames();
+readNames(!!saved);

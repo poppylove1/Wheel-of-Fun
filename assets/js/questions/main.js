@@ -1,9 +1,10 @@
 import { $, pick } from '../common.js';
+import { store } from '../store.js';
 
 const FRAMES = 12;
 const FRAME_MS = 70;
 
-let cats = [], active = new Set(), seen = new Set(), busy = false;
+let cats = [], active = new Set(), seen = new Set(), shown = null, busy = false;
 
 const pool = () =>
   cats
@@ -25,14 +26,24 @@ const renderChips = () => {
     .join('');
 };
 
+const save = () =>
+  store.save('questions', {
+    active: [...active],
+    seen: [...seen],
+    norep: $('norep').checked,
+    shown
+  });
+
 const refresh = () => {
   renderChips();
   const total = pool().length;
   $('info').textContent = total ? `${total} คำถาม · เหลือ ${fresh().length}` : 'เลือกหมวดอย่างน้อย 1 หมวด';
   $('go').disabled = busy || !total;
+  save();
 };
 
 const show = ({ tag, q }) => {
+  shown = { tag, q };
   $('tag').textContent = tag;
   $('q').textContent = q;
 };
@@ -83,7 +94,12 @@ fetch('../data/questions.json')
   .then(r => r.json())
   .then(({ categories }) => {
     cats = categories;
-    active = new Set(cats.map(c => c.id));
+    const ids = new Set(cats.map(c => c.id));
+    const { active: a = [...ids], seen: s = [], norep = true, shown: last = null } = store.load('questions') ?? {};
+    active = new Set(a.filter(id => ids.has(id)));
+    seen = new Set(s);
+    $('norep').checked = norep;
+    if (last) show(last);
     refresh();
   })
   .catch(() => {
