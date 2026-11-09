@@ -46,7 +46,7 @@ function slices(r, seg) {
     ctx.lineWidth = 3;
     ctx.strokeStyle = '#1a1a1a';
     ctx.stroke();
-    const size = Math.max(10, Math.min(19, r * seg * .32));
+    const size = Math.max(8, Math.min(19, r * seg * .32));
     const text = `${a} → ${b}`;
     ctx.save();
     ctx.rotate(s + seg / 2);

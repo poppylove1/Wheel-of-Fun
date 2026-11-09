@@ -1,6 +1,6 @@
 import { $, int } from '../common.js';
 import { store } from '../store.js';
-import { COOLDOWN } from './config.js';
+import { COOLDOWN, MAX_NAMES } from './config.js';
 import { state } from './state.js';
 import { draw, fit, idxAt } from './draw.js';
 import { plan } from './plan.js';
@@ -42,7 +42,7 @@ const build = () => {
 };
 
 const readNames = keep => {
-  state.names = [...new Set($('names').value.split(/[\s,，]+/).filter(Boolean))].slice(0, 8);
+  state.names = [...new Set($('names').value.split(/[\s,，]+/).filter(Boolean))].slice(0, MAX_NAMES);
   if (!keep) state.used.clear();
   build();
 };

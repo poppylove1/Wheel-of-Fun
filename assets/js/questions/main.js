@@ -39,6 +39,7 @@ const refresh = () => {
   const total = pool().length;
   $('info').textContent = total ? `${total} คำถาม · เหลือ ${fresh().length}` : 'เลือกหมวดอย่างน้อย 1 หมวด';
   $('go').disabled = busy || !total;
+  $('reset').disabled = busy || !seen.size;
   save();
 };
 
@@ -83,6 +84,10 @@ $('chips').onclick = e => {
 };
 $('norep').onchange = refresh;
 $('go').onclick = roll;
+$('reset').onclick = () => {
+  seen.clear();
+  refresh();
+};
 
 addEventListener('keydown', e => {
   if (e.code !== 'Space' || e.target.tagName === 'INPUT') return;
