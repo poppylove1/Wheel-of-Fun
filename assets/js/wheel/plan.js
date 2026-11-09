@@ -2,7 +2,9 @@ import { TAU, rnd, int, mod, pick } from '../common.js';
 
 const E = {
   lin: t => t,
+  in2: t => t * t,
   out3: t => 1 - (1 - t) ** 3,
+  out4: t => 1 - (1 - t) ** 4,
   coast: t => t * (1.3 - .3 * t),
   io: t => (t < .5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2)
 };
@@ -84,7 +86,18 @@ export function plan(target, n, theta) {
       let s = pick([-1, 1]);
       for (let j = int(3, 6); j--; s = -s) swing(s * .45 * .6 ** j, rnd(.45, .7));
       swing(dir * rnd(.25, .75), rnd(.9, 1.3));
-    }
+    },
+    () => {
+      const k = Math.min(int(2, 4), n - 1);
+      settle(mod(target + k, n));
+      add(k * rnd(2.5, 3.5), cur + k * seg, E.lin);
+    },
+    () => {
+      add(rnd(1.2, 1.8), cur + rnd(2, 3.5) * TAU, E.in2, { shake: true });
+      hold(rnd(.8, 1.2));
+      settle(target);
+    },
+    () => add(rnd(10, 12), land(target, int(9, 13)), E.out4)
   ])();
 
   return phases;
