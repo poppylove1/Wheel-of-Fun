@@ -4,7 +4,7 @@ import { COOLDOWN } from './config.js';
 import { state } from './state.js';
 import { draw, fit, idxAt } from './draw.js';
 import { plan } from './plan.js';
-import { buzz, cue, fanfare, tick, unlock } from './audio.js';
+import { buzz, fanfare, tick, unlock } from './audio.js';
 import { boom, shake } from './fx.js';
 
 const canvas = $('c');
@@ -80,7 +80,6 @@ const finish = () => {
   state.lastKey = pair.join('>');
   state.hist.unshift(pair);
   draw();
-  $('say').textContent = '';
   $('res').innerHTML = `<b>${pair[0]}</b> ถาม <b>${pair[1]}</b>`;
   renderHist();
   save();
@@ -105,12 +104,6 @@ const spin = () => {
 
   let i = 0, start = performance.now(), last = idxAt(state.theta), lastTick = 0;
 
-  const enter = () => {
-    const say = phases[i].say || '';
-    $('say').textContent = say;
-    if (say) cue();
-  };
-
   const step = now => {
     let el = (now - start) / 1000;
     while (i < phases.length && el >= phases[i].d) {
@@ -118,7 +111,7 @@ const spin = () => {
       state.theta = phases[i].a1;
       if (phases[i].shake) shake();
       start = now - el * 1000;
-      if (++i < phases.length) enter();
+      i++;
     }
     if (i >= phases.length) return finish();
 
@@ -139,7 +132,6 @@ const spin = () => {
     frame = requestAnimationFrame(step);
   };
 
-  enter();
   frame = requestAnimationFrame(step);
 };
 
